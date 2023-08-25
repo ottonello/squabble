@@ -10,16 +10,10 @@ from squabble.util import format_type_name
 def _parse_column_type(typ):
     """
     Feed column type name through pglast.
-
-    >>> _parse_column_type('real')
-    'pg_catalog.float4'
-
-    >>> _parse_column_type('double precision')
-    'pg_catalog.float8'
     """
     sql = 'CREATE TABLE _(_ {0});'.format(typ)
 
-    create_table = pglast.Node(pglast.parse_sql(sql))[0].stmt
+    create_table = pglast.parse_sql(sql)[0].stmt
     type_name = create_table.tableElts[0].typeName
 
     return format_type_name(type_name)

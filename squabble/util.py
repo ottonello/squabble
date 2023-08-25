@@ -36,4 +36,4 @@ def format_type_name(type_name):
     >>> format_type_name(col_def.typeName)
     'pg_catalog.timetz'
     """
-    return '.'.join([p.string_value for p in type_name.names])
+    return '.'.join([p.sval for p in type_name.names])

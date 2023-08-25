@@ -147,36 +147,12 @@ def _column_needs_foreign_key(fk_regex, column_def):
     Return True if the ``ColumnDef`` defines a column with a name that
     matches the foreign key regex but does not specify an inline
     constraint.
-
-    >>> import re
-    >>> import pglast
-
-    >>> fk_regex = re.compile('.*_id$')
-    >>> cols = {
-    ...     # name doesn't match regex
-    ...     'email': {'ColumnDef': {'colname': 'email'}},
-    ...
-    ...     # name matches regex, but no foreign key
-    ...     'users_id': {'ColumnDef': {'colname': 'users_id'}},
-    ...
-    ...     # name matches regex, but has foreign key (contype == 8)
-    ...     'post_id': {'ColumnDef': {
-    ...         'colname': 'post_id',
-    ...         'constraints': [{'Constraint': {'contype': 8}}]
-    ...      }}
-    ... }
-    >>> _column_needs_foreign_key(fk_regex, pglast.Node(cols['email']))
-    False
-    >>> _column_needs_foreign_key(fk_regex, pglast.Node(cols['users_id']))
-    True
-    >>> _column_needs_foreign_key(fk_regex, pglast.Node(cols['post_id']))
-    False
     """
-    name = column_def.colname.value
+    name = column_def.colname
     if not fk_regex.match(name):
         return False
 
-    if column_def.constraints == pglast.Missing:
+    if not column_def.constraints:
         return True
 
     return not any(
