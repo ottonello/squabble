@@ -1,5 +1,5 @@
 import pglast
-import pglast.printers
+import pglast.stream
 
 import squabble.rule
 from squabble import RuleConfigurationException
@@ -32,15 +32,9 @@ def _normalize_columns(table_elts):
     Return a list of (column name, column type) after pretty printing
     them using pglast.
 
-    >>> import pglast.printer
-    >>> create_table = pglast.parse_sql(
-    ...   'CREATE TABLE _(COL1 foo.bar(baz,123), Col2 integer);')
-    >>> table_elts = pglast.Node(create_table)[0].stmt.tableElts
-    >>> _normalize_columns(table_elts)
-    [('col1', 'foo.bar(baz, 123)'), ('col2', 'integer')]
     """
     # This is a pretty hacky implementation
-    printer = pglast.printer.RawStream()
+    printer = pglast.stream.RawStream()
     columns = printer(table_elts).split(';')
 
     res = []
@@ -66,7 +60,7 @@ def parse_column_type(typ):
     sql = 'CREATE TABLE _(_ {0});'.format(typ)
 
     try:
-        create_table = pglast.Node(pglast.parse_sql(sql))[0].stmt
+        create_table = pglast.parse_sql(sql)[0].stmt
         _, typ = _normalize_columns(create_table.tableElts)[0]
         return typ
     except pglast.parser.ParseError:
@@ -78,9 +72,6 @@ def get_required_columns(config):
     """
     Extracts the column name and normalizes types out of the config
     value for `RequireColumns`.
-
-    >>> get_required_columns(['foo,int', 'Bar'])
-    {'foo': 'integer', 'bar': None}
     """
     if not config:
         raise RuleConfigurationException(

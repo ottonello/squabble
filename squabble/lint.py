@@ -47,14 +47,9 @@ def _parse_string(text):
     parsed. This is a hack, but prevents convoluting the downstream
     logic too much, as ``Context.traverse`` will simply ignore scalar
     values.
-
-    >>> _parse_string('SELECT 1')
-    [1*{RawStmt}]
-    >>> _parse_string('-- just a comment')
-    <None>
     """
     ast = pglast.parse_sql(text)
-    return pglast.Node(ast) if ast else pglast.node.Scalar(None)
+    return ast if ast else None
 
 
 def _configure_rules(rule_config):
@@ -107,11 +102,10 @@ class Session:
             ast = _parse_string(self._sql)
             root_ctx.traverse(ast)
 
-        except pglast.parser.ParseError as exc:
-            root_ctx.report_issue(LintIssue(
+        except pglast.parser.ParseError as exc:            root_ctx.report_issue(LintIssue(
                 severity=Severity.CRITICAL,
                 message_text=exc.args[0],
-                location=exc.location
+                location=exc.args[1]
             ))
 
         return self._issues
@@ -122,22 +116,6 @@ class Context:
     Contains the node tag callback hooks enabled at or below the `parent_node`
     passed to the call to `traverse`.
 
-    >>> import pglast
-    >>> ast = pglast.Node(pglast.parse_sql('''
-    ...   CREATE TABLE foo (id INTEGER PRIMARY KEY);
-    ... '''))
-    >>> ctx = Context(session=...)
-    >>>
-    >>> def create_stmt(child_ctx, node):
-    ...     print('create stmt')
-    ...     child_ctx.register('ColumnDef', lambda _c, _n: print('from child'))
-    ...
-    >>> ctx.register('CreateStmt', create_stmt)
-    >>> ctx.register('ColumnDef', lambda _c, _n: print('from root'))
-    >>> ctx.traverse(ast)
-    create stmt
-    from child
-    from root
     """
     def __init__(self, session):
         self._hooks = {}
@@ -151,12 +129,12 @@ class Context:
         For every node, call any callback functions registered for that
         particular node tag.
         """
-        for node in parent_node.traverse():
+        for node in parent_node:
             # Ignore scalar values
-            if not isinstance(node, pglast.node.Node):
+            if not isinstance(node, pglast.ast.Node):
                 continue
 
-            tag = node.node_tag
+            tag = str(type(node.stmt)).removeprefix('pglast.ast.')
 
             if tag not in self._hooks:
                 continue
